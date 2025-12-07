@@ -41,3 +41,53 @@ FROM country_avg_aqi a
 JOIN mortality m ON a.country = m.country_name;
 
 SELECT * FROM pollution_mortality_analysis ORDER BY mortality_rate DESC LIMIT 10;
+
+
+
+Now Run a Few More Queries for Your Video
+sql-- AQI Category Distribution
+SELECT aqi_category, COUNT(*) as city_count
+FROM air_quality
+GROUP BY aqi_category
+ORDER BY city_count DESC;
+sql-- Risk Classification
+SELECT country, avg_pm25, mortality_rate,
+CASE 
+    WHEN avg_pm25 > 100 AND mortality_rate > 150 THEN 'High Risk'
+    WHEN avg_pm25 > 50 AND mortality_rate > 100 THEN 'Medium Risk'
+    ELSE 'Lower Risk'
+END as risk_category
+FROM pollution_mortality_analysis
+ORDER BY mortality_rate DESC
+LIMIT 15;
+
+
+---------------------------------------
+
+%jdbc(hive)
+SELECT country, avg_pm25 
+FROM airpollution.pollution_mortality_analysis 
+ORDER BY avg_pm25 DESC 
+LIMIT 15
+
+%jdbc(hive)
+SELECT country, mortality_rate 
+FROM airpollution.pollution_mortality_analysis 
+ORDER BY mortality_rate DESC 
+LIMIT 15
+
+%jdbc(hive)
+SELECT aqi_category, COUNT(*) as count 
+FROM airpollution.air_quality 
+GROUP BY aqi_category
+
+%jdbc(hive)
+SELECT country, avg_pm25, mortality_rate,
+CASE 
+    WHEN avg_pm25 > 100 AND mortality_rate > 150 THEN 'High Risk'
+    WHEN avg_pm25 > 50 AND mortality_rate > 100 THEN 'Medium Risk'
+    ELSE 'Lower Risk'
+END as risk_category
+FROM airpollution.pollution_mortality_analysis
+ORDER BY mortality_rate DESC
+LIMIT 15
