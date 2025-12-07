@@ -5,3 +5,12 @@ rm -f air_quality_cleaned.csv mortality_by_country.csv
 curl -L -o air_quality_cleaned.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/air_quality_cleaned.csv"
 
 curl -L -o mortality_by_country.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/mortality_by_country.csv"
+
+
+hdfs dfs -rm /user/airpollution/data/air_quality/*
+hdfs dfs -rm /user/airpollution/data/mortality/*
+
+hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
+hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
+
+hdfs dfs -cat /user/airpollution/data/air_quality/air_quality_cleaned.csv | head -3
