@@ -112,15 +112,20 @@ hdfs dfs -ls /user/airpollution/data/air_quality/
 hdfs dfs -ls /user/airpollution/data/mortality/
 ```
 
-### Step 4: Create Hive External Tables
-
+### Step 4: Create Hive Database and External Tables
 ```bash
 # Start Hive CLI
 hive
 ```
 
-#### Create Air Quality External Table
+#### Create Database
+```sql
+CREATE DATABASE airpollution;
 
+USE airpollution;
+```
+
+#### Create Air Quality External Table
 ```sql
 CREATE EXTERNAL TABLE air_quality (
     country STRING,
@@ -144,7 +149,6 @@ TBLPROPERTIES ("skip.header.line.count"="1");
 ```
 
 #### Create Mortality External Table
-
 ```sql
 CREATE EXTERNAL TABLE mortality (
     country_name STRING,
@@ -159,9 +163,11 @@ TBLPROPERTIES ("skip.header.line.count"="1");
 ```
 
 #### Verify Tables
-
 ```sql
+SHOW TABLES;
+
 SELECT * FROM air_quality LIMIT 5;
+
 SELECT * FROM mortality LIMIT 5;
 ```
 
