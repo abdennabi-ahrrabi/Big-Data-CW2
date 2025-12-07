@@ -57,6 +57,7 @@ Air pollution is one of the leading environmental risk factors for death globall
 - Native integration with HDFS
 - Supports complex joins between datasets
 - Schema-on-read capability for flexible data handling
+- External tables allow data to stay in HDFS without moving
 
 **Alternative Options Considered:**
 
@@ -98,28 +99,30 @@ ls -la
 ### Step 3: Upload to HDFS
 
 ```bash
-# Create HDFS directory structure
-hdfs dfs -mkdir -p /user/airpollution/data
+# Create HDFS directory structure (separate folder for each dataset)
+hdfs dfs -mkdir -p /user/airpollution/data/air_quality
+hdfs dfs -mkdir -p /user/airpollution/data/mortality
 
-# Upload CSV files to HDFS
-hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/
-hdfs dfs -put mortality_by_country.csv /user/airpollution/data/
+# Upload CSV files to their respective HDFS folders
+hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
+hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
 
 # Verify files in HDFS
-hdfs dfs -ls /user/airpollution/data/
+hdfs dfs -ls /user/airpollution/data/air_quality/
+hdfs dfs -ls /user/airpollution/data/mortality/
 ```
 
-### Step 4: Create Hive Tables
+### Step 4: Create Hive External Tables
 
 ```bash
 # Start Hive CLI
 hive
 ```
 
-#### Create Air Quality Table
+#### Create Air Quality External Table
 
 ```sql
-CREATE TABLE air_quality (
+CREATE EXTERNAL TABLE air_quality (
     country STRING,
     city STRING,
     aqi_value INT,
@@ -136,19 +139,14 @@ CREATE TABLE air_quality (
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
+LOCATION '/user/airpollution/data/air_quality/'
 TBLPROPERTIES ("skip.header.line.count"="1");
 ```
 
-#### Load Air Quality Data
+#### Create Mortality External Table
 
 ```sql
-LOAD DATA INPATH '/user/airpollution/data/air_quality_cleaned.csv' INTO TABLE air_quality;
-```
-
-#### Create Mortality Table
-
-```sql
-CREATE TABLE mortality (
+CREATE EXTERNAL TABLE mortality (
     country_name STRING,
     country_code STRING,
     mortality_rate DOUBLE
@@ -156,13 +154,8 @@ CREATE TABLE mortality (
 ROW FORMAT DELIMITED
 FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
+LOCATION '/user/airpollution/data/mortality/'
 TBLPROPERTIES ("skip.header.line.count"="1");
-```
-
-#### Load Mortality Data
-
-```sql
-LOAD DATA INPATH '/user/airpollution/data/mortality_by_country.csv' INTO TABLE mortality;
 ```
 
 #### Verify Tables
@@ -308,14 +301,24 @@ GROUP BY aqi_category
 ```
 Big-Data-CW2/
 ├── README.md                           # This file
-├── data/
-│   ├── air_quality_cleaned.csv         # Cleaned air quality data
-│   └── mortality_by_country.csv        # Country mortality rates
-├── scripts/
-│   ├── hdfs_upload.sh                  # HDFS upload commands
-│   └── hive_queries.sql                # All Hive SQL queries
-└── presentation/
-    └── CW2_Presentation.pptx           # Final presentation with video
+├── air_quality_cleaned.csv             # Cleaned air quality data
+├── mortality_by_country.csv            # Country mortality rates
+├── hive_queries.sql                    # All Hive SQL queries
+├── hdfs_upload.sh                      # HDFS upload script
+└── VIDEO_SCRIPT.md                     # Video demonstration script
+```
+
+---
+
+## HDFS Structure
+
+```
+/user/airpollution/
+└── data/
+    ├── air_quality/
+    │   └── air_quality_cleaned.csv
+    └── mortality/
+        └── mortality_by_country.csv
 ```
 
 ---
@@ -333,17 +336,20 @@ Big-Data-CW2/
 # 1. SSH into sandbox
 ssh root@sandbox-hdp.hortonworks.com -p 2222
 
-# 2. Clone this repository
-cd /home
-git clone https://github.com/abdennabi-ahrrabi/Big-Data-CW2.git
-cd Big-Data-CW2
+# 2. Create project directory and download data
+mkdir -p /home/airpollution
+cd /home/airpollution
+wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/air_quality_cleaned.csv
+wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/mortality_by_country.csv
 
 # 3. Upload to HDFS
-hdfs dfs -mkdir -p /user/airpollution/data
-hdfs dfs -put data/*.csv /user/airpollution/data/
+hdfs dfs -mkdir -p /user/airpollution/data/air_quality
+hdfs dfs -mkdir -p /user/airpollution/data/mortality
+hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
+hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
 
 # 4. Run Hive setup
-hive -f scripts/hive_queries.sql
+hive -f hive_queries.sql
 
 # 5. Open Zeppelin for visualization
 # Navigate to: http://sandbox-hdp.hortonworks.com:9995
