@@ -1,0 +1,7 @@
+cd /home/airpollution
+
+rm -f air_quality_cleaned.csv mortality_by_country.csv
+
+curl -L -o air_quality_cleaned.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/air_quality_cleaned.csv"
+
+curl -L -o mortality_by_country.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/mortality_by_country.csv"
