@@ -14,3 +14,30 @@ hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
 hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
 
 hdfs dfs -cat /user/airpollution/data/air_quality/air_quality_cleaned.csv | head -3
+
+
+SELECT * FROM mortality LIMIT 5;
+
+CREATE TABLE country_avg_aqi AS
+SELECT 
+    country,
+    COUNT(*) as num_cities,
+    ROUND(AVG(aqi_value), 2) as avg_aqi,
+    ROUND(AVG(pm25_aqi_value), 2) as avg_pm25,
+    ROUND(AVG(no2_aqi_value), 2) as avg_no2,
+    ROUND(AVG(ozone_aqi_value), 2) as avg_ozone
+FROM air_quality
+GROUP BY country;
+
+CREATE TABLE pollution_mortality_analysis AS
+SELECT 
+    a.country,
+    a.num_cities,
+    a.avg_aqi,
+    a.avg_pm25,
+    m.mortality_rate,
+    m.country_code
+FROM country_avg_aqi a
+JOIN mortality m ON a.country = m.country_name;
+
+SELECT * FROM pollution_mortality_analysis ORDER BY mortality_rate DESC LIMIT 10;
