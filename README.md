@@ -1,382 +1,233 @@
-# Big Data & Infrastructure - Coursework 2
-## Air Quality and Mortality Data Lake Analysis
+# Air Quality and Mortality Data Lake Analysis
 
-**Module:** COM745 - Big Data & Infrastructure  
-**Student:** Abdennabi Ahrrabi  
-**University:** Ulster University  
+**COM745 - Big Data & Infrastructure | Ulster University**
+
+A Hadoop-based data lake solution analyzing the correlation between global air pollution levels and mortality rates across 168 countries.
 
 ---
 
 ## Project Overview
 
-This project analyzes the relationship between **air pollution levels** and **mortality rates** across different countries using a Hadoop-based data lake architecture.
+This project demonstrates the implementation of a data lake using the Hadoop ecosystem to integrate and analyze two public health datasets:
 
-### Problem Statement
+- **Global Air Pollution Dataset** - 23,463 city-level measurements from Kaggle
+- **World Bank Mortality Data** - Death rates attributed to air pollution for 231 countries
 
-Air pollution is one of the leading environmental risk factors for death globally. This project aims to:
-1. Integrate air quality data from multiple cities worldwide
-2. Correlate pollution levels (AQI, PM2.5) with country-level mortality rates
-3. Identify which countries have the highest health impact from air pollution
-4. Visualize insights using Apache Zeppelin
+### Key Findings
 
-### Datasets Used
-
-| Dataset | Source | Description | Size |
-|---------|--------|-------------|------|
-| Global Air Pollution | [Kaggle](https://www.kaggle.com/datasets/hasibalmuzdadid/global-air-pollution-dataset) | City-level AQI, PM2.5, NO2, Ozone, CO measurements | 23,463 rows |
-| Mortality Rates | [World Bank](https://data.worldbank.org/indicator/SH.STA.AIRP.P5) | Country-level mortality rate attributed to air pollution (per 100,000 population) | 231 rows |
+| Finding | Details |
+|---------|---------|
+| Most Polluted Countries | Bahrain (188), Mauritania (179), Pakistan (173) - PM2.5 levels |
+| Highest Mortality Rates | Central African Republic (305), Lesotho (288), Solomon Islands (281) |
+| Countries Matched | 168 out of 176 (95% match rate) |
+| Cities Analyzed | 23,463 across 176 countries |
 
 ---
 
-## Technical Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   CSV       │     │    HDFS     │     │  Hive/Spark │     │  Zeppelin   │
-│   Files     │ ──▶ │  Storage    │ ──▶ │  Processing │ ──▶ │  Visualize  │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-```
-
-### Technology Stack
+## Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Storage | HDFS (Hadoop Distributed File System) | Distributed storage for large datasets |
-| Processing | Apache Hive | SQL-like queries on big data |
-| Processing | Apache Spark | In-memory data processing |
-| Visualization | Apache Zeppelin | Interactive notebooks and charts |
-| Platform | Hortonworks Data Platform (HDP) Sandbox | Integrated Hadoop ecosystem |
+| Platform | Hortonworks HDP Sandbox | Hadoop distribution |
+| Storage | HDFS | Distributed file storage |
+| Processing | Apache Hive | SQL-based data processing |
+| Visualization | Apache Zeppelin | Interactive notebooks |
 
-### Why Hive?
+### Why Apache Hive?
 
-**Chosen Engine:** Apache Hive
+| Alternative | Pros | Cons | Decision |
+|-------------|------|------|----------|
+| Spark SQL | Fast in-memory processing | Complex setup, resource heavy | Overkill for dataset size |
+| MapReduce | Native Hadoop, scalable | Requires Java, complex code | Too low-level |
+| Apache Pig | Good for ETL pipelines | Pig Latin less intuitive | Hive more SQL-like |
+| Presto | Fast interactive queries | Separate installation needed | Not included in HDP |
 
-**Justification:**
-- SQL-like syntax (HiveQL) - familiar and easy to use
-- Excellent for batch processing and ETL operations
-- Native integration with HDFS
-- Supports complex joins between datasets
-- Schema-on-read capability for flexible data handling
-- External tables allow data to stay in HDFS without moving
-
-**Alternative Options Considered:**
-
-| Engine | Pros | Cons | Why Not Chosen |
-|--------|------|------|----------------|
-| Spark SQL | Faster (in-memory), supports ML | More complex setup | Overkill for this dataset size |
-| MapReduce | Native Hadoop, very scalable | Complex Java code required | Too low-level for SQL operations |
-| Pig | Good for ETL pipelines | Less SQL-like syntax | Hive more intuitive for analysis |
-| Presto | Very fast interactive queries | Requires separate installation | Not pre-installed in sandbox |
+**Chosen: Apache Hive** - SQL-like syntax, native HDFS integration, supports External Tables
 
 ---
 
-## Implementation Steps
-
-### Step 1: Environment Setup
-
-```bash
-# Start HDP Sandbox and access via SSH
-ssh root@sandbox-hdp.hortonworks.com -p 2222
-# Password: hadoop (or your configured password)
-```
-
-### Step 2: Download Datasets
-
-```bash
-# Create project directory
-mkdir -p /home/airpollution
-cd /home/airpollution
-
-# Download cleaned datasets from GitHub
-wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/air_quality_cleaned.csv
-
-wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/mortality_by_country.csv
-
-# Verify downloads
-ls -la
-```
-
-### Step 3: Upload to HDFS
-
-```bash
-# Create HDFS directory structure (separate folder for each dataset)
-hdfs dfs -mkdir -p /user/airpollution/data/air_quality
-hdfs dfs -mkdir -p /user/airpollution/data/mortality
-
-# Upload CSV files to their respective HDFS folders
-hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
-hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
-
-# Verify files in HDFS
-hdfs dfs -ls /user/airpollution/data/air_quality/
-hdfs dfs -ls /user/airpollution/data/mortality/
-```
-
-### Step 4: Create Hive Database and External Tables
-```bash
-# Start Hive CLI
-hive
-```
-
-#### Create Database
-```sql
-CREATE DATABASE airpollution;
-
-USE airpollution;
-```
-
-#### Create Air Quality External Table
-```sql
-CREATE EXTERNAL TABLE air_quality (
-    country STRING,
-    city STRING,
-    aqi_value INT,
-    aqi_category STRING,
-    co_aqi_value INT,
-    co_aqi_category STRING,
-    ozone_aqi_value INT,
-    ozone_aqi_category STRING,
-    no2_aqi_value INT,
-    no2_aqi_category STRING,
-    pm25_aqi_value INT,
-    pm25_aqi_category STRING
-)
-ROW FORMAT DELIMITED
-FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '/user/airpollution/data/air_quality/'
-TBLPROPERTIES ("skip.header.line.count"="1");
-```
-
-#### Create Mortality External Table
-```sql
-CREATE EXTERNAL TABLE mortality (
-    country_name STRING,
-    country_code STRING,
-    mortality_rate DOUBLE
-)
-ROW FORMAT DELIMITED
-FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '/user/airpollution/data/mortality/'
-TBLPROPERTIES ("skip.header.line.count"="1");
-```
-
-#### Verify Tables
-```sql
-SHOW TABLES;
-
-SELECT * FROM air_quality LIMIT 5;
-
-SELECT * FROM mortality LIMIT 5;
-```
-
-### Step 5: Data Analysis Queries
-
-#### Query 1: Average AQI by Country
-
-```sql
-CREATE TABLE country_avg_aqi AS
-SELECT 
-    country,
-    COUNT(*) as num_cities,
-    ROUND(AVG(aqi_value), 2) as avg_aqi,
-    ROUND(AVG(pm25_aqi_value), 2) as avg_pm25,
-    ROUND(AVG(no2_aqi_value), 2) as avg_no2,
-    ROUND(AVG(ozone_aqi_value), 2) as avg_ozone
-FROM air_quality
-GROUP BY country
-ORDER BY avg_aqi DESC;
-```
-
-#### Query 2: Join Air Quality with Mortality Data
-
-```sql
-CREATE TABLE pollution_mortality_analysis AS
-SELECT 
-    a.country,
-    a.num_cities,
-    a.avg_aqi,
-    a.avg_pm25,
-    m.mortality_rate,
-    m.country_code
-FROM country_avg_aqi a
-JOIN mortality m ON a.country = m.country_name
-ORDER BY m.mortality_rate DESC;
-```
-
-#### Query 3: Top 10 Most Polluted Countries with Death Rates
-
-```sql
-SELECT 
-    country,
-    avg_aqi,
-    avg_pm25,
-    mortality_rate
-FROM pollution_mortality_analysis
-ORDER BY avg_pm25 DESC
-LIMIT 10;
-```
-
-#### Query 4: Correlation Analysis - High Pollution vs High Mortality
-
-```sql
-SELECT 
-    country,
-    avg_pm25,
-    mortality_rate,
-    CASE 
-        WHEN avg_pm25 > 100 AND mortality_rate > 150 THEN 'High Risk'
-        WHEN avg_pm25 > 50 AND mortality_rate > 100 THEN 'Medium Risk'
-        ELSE 'Lower Risk'
-    END as risk_category
-FROM pollution_mortality_analysis
-ORDER BY mortality_rate DESC;
-```
-
-#### Query 5: AQI Category Distribution
-
-```sql
-SELECT 
-    aqi_category,
-    COUNT(*) as city_count,
-    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM air_quality), 2) as percentage
-FROM air_quality
-GROUP BY aqi_category
-ORDER BY city_count DESC;
-```
-
-### Step 6: Zeppelin Visualization
-
-Access Zeppelin at: `http://sandbox-hdp.hortonworks.com:9995`
-
-#### Create New Notebook
-
-1. Click "Create new note"
-2. Name it: "Air Pollution Analysis"
-3. Select interpreter: `jdbc` or `hive`
-
-#### Visualization Paragraphs
-
-```sql
-%jdbc(hive)
--- Top 15 Countries by Average PM2.5
-SELECT country, avg_pm25, mortality_rate 
-FROM pollution_mortality_analysis 
-ORDER BY avg_pm25 DESC 
-LIMIT 15
-```
-
-```sql
-%jdbc(hive)
--- Mortality Rate Distribution
-SELECT country, mortality_rate 
-FROM pollution_mortality_analysis 
-ORDER BY mortality_rate DESC 
-LIMIT 20
-```
-
-```sql
-%jdbc(hive)
--- AQI Categories Pie Chart
-SELECT aqi_category, COUNT(*) as count 
-FROM air_quality 
-GROUP BY aqi_category
-```
-
----
-
-## Key Findings
-
-### 1. Countries with Highest PM2.5 Levels
-- India, Pakistan, and China have the highest average PM2.5 values
-- Many cities in these countries exceed WHO safe limits
-
-### 2. Mortality Rate Correlation
-- Countries with avg PM2.5 > 100 tend to have mortality rates > 150 per 100,000
-- Strong positive correlation between air pollution and health impact
-
-### 3. AQI Category Distribution
-- Majority of cities fall in "Moderate" category
-- Significant portion in "Unhealthy for Sensitive Groups"
-
----
-
-## Project Structure
+## Repository Structure
 
 ```
 Big-Data-CW2/
-├── README.md                           # This file
-├── air_quality_cleaned.csv             # Cleaned air quality data
-├── mortality_by_country.csv            # Country mortality rates
-├── hive_queries.sql                    # All Hive SQL queries
-├── hdfs_upload.sh                      # HDFS upload script
-└── VIDEO_SCRIPT.md                     # Video demonstration script
+├── README.md                 # This file
+├── data/
+│   ├── air_quality_cleaned.csv    # Cleaned air quality dataset
+│   └── mortality_by_country.csv   # Cleaned mortality dataset
+├── scripts/
+│   ├── hdfs_commands.sh      # HDFS setup and upload commands
+│   └── hive_queries.sql      # All Hive SQL queries
+└── docs/
+    └── architecture.md       # Technical architecture details
 ```
 
 ---
 
-## HDFS Structure
+## Data Sources
+
+### Dataset 1: Global Air Pollution
+
+- **Source:** [Kaggle - Global Air Pollution Dataset](https://www.kaggle.com/datasets/hasibalmuzdadid/global-air-pollution-dataset)
+- **Records:** 23,463 cities
+- **Countries:** 176
+- **Columns:** Country, City, AQI Value, AQI Category, CO, Ozone, NO2, PM2.5
+
+### Dataset 2: Mortality Rate
+
+- **Source:** [World Bank - Mortality Rate Attributed to Air Pollution](https://data.worldbank.org/indicator/SH.STA.AIRP.P5)
+- **Records:** 231 countries
+- **Year:** 2019
+- **Metric:** Deaths per 100,000 population
+
+### Data Preparation
+
+1. Removed metadata rows from World Bank CSV
+2. Extracted 2019 mortality column only
+3. Standardized country names for matching:
+   - "United States of America" → "United States"
+   - "Egypt" → "Egypt, Arab Rep."
+   - "Turkey" → "Turkiye"
+
+---
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   SOURCE    │     │   STORAGE   │     │  PROCESSING │     │  VISUALIZE  │
+│  CSV Files  │ ──► │    HDFS     │ ──► │ Apache Hive │ ──► │  Zeppelin   │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+```
+
+### HDFS Structure
 
 ```
 /user/airpollution/
 └── data/
     ├── air_quality/
-    │   └── air_quality_cleaned.csv
+    │   └── air_quality_cleaned.csv    (1.5 MB)
     └── mortality/
-        └── mortality_by_country.csv
+        └── mortality_by_country.csv   (6 KB)
 ```
+
+### Hive Tables
+
+| Table Name | Type | Description | Records |
+|------------|------|-------------|---------|
+| air_quality | EXTERNAL | City-level pollution data | 23,463 |
+| mortality | EXTERNAL | Country mortality rates | 231 |
+| country_avg_aqi | MANAGED | Aggregated by country | 176 |
+| pollution_mortality_analysis | MANAGED | Joined analysis table | 168 |
 
 ---
 
-## How to Run This Project
+## Quick Start
 
 ### Prerequisites
-- Hortonworks HDP Sandbox (or equivalent Hadoop environment)
-- SSH client (PuTTY on Windows)
-- Web browser for Ambari and Zeppelin
 
-### Quick Start
+- Hortonworks HDP Sandbox (or equivalent Hadoop distribution)
+- SSH access to sandbox
+- Services running: HDFS, Hive, Zeppelin
+
+### Step 1: Clone Repository
 
 ```bash
-# 1. SSH into sandbox
+git clone https://github.com/abdennabi-ahrrabi/Big-Data-CW2.git
+cd Big-Data-CW2
+```
+
+### Step 2: Upload Data to HDFS
+
+```bash
+# SSH into sandbox
 ssh root@sandbox-hdp.hortonworks.com -p 2222
 
-# 2. Create project directory and download data
-mkdir -p /home/airpollution
-cd /home/airpollution
-wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/air_quality_cleaned.csv
-wget https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/mortality_by_country.csv
-
-# 3. Upload to HDFS
+# Create directories
 hdfs dfs -mkdir -p /user/airpollution/data/air_quality
 hdfs dfs -mkdir -p /user/airpollution/data/mortality
+
+# Download data files
+curl -L -o air_quality_cleaned.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/air_quality_cleaned.csv"
+curl -L -o mortality_by_country.csv "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/mortality_by_country.csv"
+
+# Upload to HDFS
 hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
 hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
-
-# 4. Run Hive setup
-hive -f hive_queries.sql
-
-# 5. Open Zeppelin for visualization
-# Navigate to: http://sandbox-hdp.hortonworks.com:9995
 ```
+
+### Step 3: Create Hive Tables
+
+```bash
+hive -f scripts/hive_queries.sql
+```
+
+Or run queries manually in Hive CLI.
+
+### Step 4: Open Zeppelin
+
+Navigate to `http://sandbox-hdp.hortonworks.com:9995` and create visualizations.
+
+---
+
+## Sample Results
+
+### Top 10 Most Polluted Countries (by PM2.5)
+
+| Rank | Country | Avg PM2.5 | Mortality Rate |
+|------|---------|-----------|----------------|
+| 1 | Bahrain | 188.0 | 43.1 |
+| 2 | Mauritania | 179.0 | 183.8 |
+| 3 | Pakistan | 173.1 | 128.8 |
+| 4 | Kuwait | 162.0 | 62.2 |
+| 5 | United Arab Emirates | 152.7 | 70.0 |
+| 6 | Senegal | 152.4 | 206.4 |
+| 7 | India | 149.5 | 98.4 |
+| 8 | Saudi Arabia | 149.3 | 75.7 |
+| 9 | Nepal | 148.5 | 133.3 |
+| 10 | Egypt | 143.2 | 77.7 |
+
+### Top 10 Countries by Mortality Rate
+
+| Rank | Country | Mortality Rate | Avg PM2.5 |
+|------|---------|----------------|-----------|
+| 1 | Central African Republic | 305.1 | 64.2 |
+| 2 | Lesotho | 288.3 | 89.6 |
+| 3 | Solomon Islands | 281.2 | 18.0 |
+| 4 | Afghanistan | 265.7 | 96.0 |
+| 5 | Vanuatu | 259.9 | 30.0 |
+| 6 | Sierra Leone | 239.0 | 26.0 |
+| 7 | Guinea | 238.0 | 141.3 |
+| 8 | Eritrea | 237.4 | 111.0 |
+
+### Key Insight
+
+Countries with highest outdoor PM2.5 ≠ Countries with highest mortality. This suggests **indoor air pollution** (from cooking fuels) is a major factor in developing nations.
 
 ---
 
 ## References
 
-1. Kaggle - Global Air Pollution Dataset: https://www.kaggle.com/datasets/hasibalmuzdadid/global-air-pollution-dataset
-2. World Bank - Air Pollution Mortality Data: https://data.worldbank.org/indicator/SH.STA.AIRP.P5
-3. Apache Hive Documentation: https://hive.apache.org/
-4. Apache Zeppelin Documentation: https://zeppelin.apache.org/
-5. WHO Air Quality Guidelines: https://www.who.int/data/gho/data/themes/air-pollution
+1. H. Muzdadid, "Global Air Pollution Dataset," Kaggle, 2023. [Online]. Available: https://www.kaggle.com/datasets/hasibalmuzdadid/global-air-pollution-dataset
+
+2. World Bank, "Mortality rate attributed to household and ambient air pollution," 2019. [Online]. Available: https://data.worldbank.org/indicator/SH.STA.AIRP.P5
+
+3. Apache Software Foundation, "Apache Hive Documentation," 2023. [Online]. Available: https://hive.apache.org/
+
+4. Apache Software Foundation, "Apache Zeppelin Documentation," 2023. [Online]. Available: https://zeppelin.apache.org/
+
+5. World Health Organization, "WHO Global Air Quality Guidelines," 2021. [Online]. Available: https://www.who.int/publications/i/item/9789240034228
+
+---
+
+## Author
+
+**Abdennabi Ahrrabi**  
+MSc Computer Science  
+Ulster University London Campus  
+December 2025
 
 ---
 
 ## License
 
-This project is for educational purposes as part of Ulster University MSc coursework.
-
----
-
-**Last Updated:** December 2025
+This project is for educational purposes as part of COM745 Big Data & Infrastructure coursework.

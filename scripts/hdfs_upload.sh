@@ -1,57 +1,148 @@
 #!/bin/bash
-# ============================================
-# Big Data CW2 - HDFS Upload Script
-# Air Quality and Mortality Analysis
-# ============================================
+# ============================================================
+# COM745 Big Data & Infrastructure - HDFS Setup Commands
+# Air Quality and Mortality Data Lake Analysis
+# ============================================================
 
-echo "=========================================="
-echo "Starting Data Lake Setup..."
-echo "=========================================="
+# ============================================================
+# STEP 1: CREATE PROJECT DIRECTORY (Local)
+# ============================================================
 
-# Step 1: Create project directory
-echo "[1/6] Creating local project directory..."
+echo "Creating local project directory..."
 mkdir -p /home/airpollution
 cd /home/airpollution
 
-# Step 2: Download datasets from GitHub
-echo "[2/6] Downloading datasets from GitHub..."
-wget -q https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/air_quality_cleaned.csv
-wget -q https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/mortality_by_country.csv
+# ============================================================
+# STEP 2: DOWNLOAD DATA FILES FROM GITHUB
+# ============================================================
 
-# Verify downloads
-if [ -f "air_quality_cleaned.csv" ] && [ -f "mortality_by_country.csv" ]; then
-    echo "    ✓ Files downloaded successfully"
-else
-    echo "    ✗ Download failed!"
-    exit 1
-fi
+echo "Downloading air quality dataset..."
+curl -L -o air_quality_cleaned.csv \
+    "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/air_quality_cleaned.csv"
 
-# Step 3: Create HDFS directory structure
-echo "[3/6] Creating HDFS directory structure..."
-hdfs dfs -mkdir -p /user/airpollution/data
-hdfs dfs -mkdir -p /user/airpollution/output
+echo "Downloading mortality dataset..."
+curl -L -o mortality_by_country.csv \
+    "https://raw.githubusercontent.com/abdennabi-ahrrabi/Big-Data-CW2/main/data/mortality_by_country.csv"
 
-# Step 4: Upload CSV files to HDFS
-echo "[4/6] Uploading CSV files to HDFS..."
-hdfs dfs -put -f air_quality_cleaned.csv /user/airpollution/data/
-hdfs dfs -put -f mortality_by_country.csv /user/airpollution/data/
+# ============================================================
+# STEP 3: VERIFY DOWNLOADS
+# ============================================================
 
-# Step 5: Verify files in HDFS
-echo "[5/6] Verifying files in HDFS..."
+echo "Verifying downloaded files..."
+echo "File types:"
+file air_quality_cleaned.csv
+file mortality_by_country.csv
+
+echo ""
+echo "File sizes:"
+ls -la *.csv
+
+echo ""
+echo "Preview air quality data:"
+head -3 air_quality_cleaned.csv
+
+echo ""
+echo "Preview mortality data:"
+head -3 mortality_by_country.csv
+
+# ============================================================
+# STEP 4: CREATE HDFS DIRECTORY STRUCTURE
+# ============================================================
+
+echo ""
+echo "Creating HDFS directories..."
+
+# Create main project directory
+hdfs dfs -mkdir -p /user/airpollution/data/air_quality
+hdfs dfs -mkdir -p /user/airpollution/data/mortality
+
+echo "HDFS directories created:"
 hdfs dfs -ls /user/airpollution/data/
 
-# Step 6: Show file sizes
-echo "[6/6] File details:"
-echo "    Air Quality Dataset:"
-hdfs dfs -du -h /user/airpollution/data/air_quality_cleaned.csv
-echo "    Mortality Dataset:"
-hdfs dfs -du -h /user/airpollution/data/mortality_by_country.csv
+# ============================================================
+# STEP 5: UPLOAD DATA TO HDFS
+# ============================================================
 
 echo ""
-echo "=========================================="
-echo "Data Lake Setup Complete!"
-echo "=========================================="
+echo "Uploading air quality data to HDFS..."
+hdfs dfs -put air_quality_cleaned.csv /user/airpollution/data/air_quality/
+
+echo "Uploading mortality data to HDFS..."
+hdfs dfs -put mortality_by_country.csv /user/airpollution/data/mortality/
+
+# ============================================================
+# STEP 6: VERIFY HDFS UPLOADS
+# ============================================================
+
 echo ""
-echo "Next step: Run Hive to create tables"
-echo "  $ hive -f hive_queries.sql"
+echo "Verifying HDFS uploads..."
 echo ""
+echo "Air quality folder:"
+hdfs dfs -ls /user/airpollution/data/air_quality/
+
+echo ""
+echo "Mortality folder:"
+hdfs dfs -ls /user/airpollution/data/mortality/
+
+echo ""
+echo "File sizes in HDFS:"
+hdfs dfs -du -h /user/airpollution/data/
+
+# ============================================================
+# STEP 7: PREVIEW DATA IN HDFS
+# ============================================================
+
+echo ""
+echo "Preview air quality data in HDFS:"
+hdfs dfs -cat /user/airpollution/data/air_quality/air_quality_cleaned.csv | head -5
+
+echo ""
+echo "Preview mortality data in HDFS:"
+hdfs dfs -cat /user/airpollution/data/mortality/mortality_by_country.csv | head -5
+
+# ============================================================
+# SETUP COMPLETE
+# ============================================================
+
+echo ""
+echo "============================================"
+echo "HDFS SETUP COMPLETE!"
+echo "============================================"
+echo ""
+echo "Data uploaded to:"
+echo "  - /user/airpollution/data/air_quality/"
+echo "  - /user/airpollution/data/mortality/"
+echo ""
+echo "Next step: Run Hive queries from scripts/hive_queries.sql"
+echo ""
+
+# ============================================================
+# USEFUL HDFS COMMANDS REFERENCE
+# ============================================================
+
+# List directory contents
+# hdfs dfs -ls /user/airpollution/data/
+
+# View file content
+# hdfs dfs -cat /path/to/file | head -10
+
+# Check disk usage
+# hdfs dfs -du -h /user/airpollution/
+
+# Delete file
+# hdfs dfs -rm /path/to/file
+
+# Delete directory recursively
+# hdfs dfs -rm -r /path/to/directory
+
+# Copy file from local to HDFS
+# hdfs dfs -put local_file.csv /hdfs/path/
+
+# Copy file from HDFS to local
+# hdfs dfs -get /hdfs/path/file.csv local_file.csv
+
+# Create directory
+# hdfs dfs -mkdir -p /path/to/directory
+
+# Check file exists
+# hdfs dfs -test -e /path/to/file && echo "exists" || echo "not found"
