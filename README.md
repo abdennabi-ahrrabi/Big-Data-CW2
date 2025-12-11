@@ -55,10 +55,9 @@ Big-Data-CW2/
 │   ├── air_quality_cleaned.csv    # Cleaned air quality dataset
 │   └── mortality_by_country.csv   # Cleaned mortality dataset
 ├── scripts/
-│   ├── hdfs_commands.sh      # HDFS setup and upload commands
-│   └── hive_queries.sql      # All Hive SQL queries
-└── docs/
-    └── architecture.md       # Technical architecture details
+    ├── hdfs_commands.sh      # HDFS setup and upload commands
+    └── hive_queries.sql      # All Hive SQL queries
+
 ```
 
 ---
